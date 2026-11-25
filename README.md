@@ -27,6 +27,23 @@ The file is not committed. Place it at `data/raw/fraud_data.csv`.
 - **The existing rule flag is weak.** `isFlaggedFraud` catches 16 of 8,213 frauds. That is the baseline to beat.
 - **Account IDs almost never repeat**, so per-account history and network features are not possible with this sample.
 
+## Data preparation (`src/data.py`)
+
+- Drops the two old index columns and `date`.
+- Keeps only TRANSFER and CASH_OUT, since no other type has fraud. That leaves **51,704 rows with all 8,213 frauds (15.9%)**.
+- Sorts by `step` so later splits can follow time order.
+- Adds `is_transfer` (1 = TRANSFER, 0 = CASH_OUT) and `hour` (`step % 24`).
+- Defines two feature sets for Part A:
+
+| Set | Columns | Meaning |
+|---|---|---|
+| Auth-time | `amount`, `oldbalanceOrg`, `oldbalanceDest`, `is_transfer`, `hour` | Known when the transaction is requested |
+| All | auth-time + `newbalanceOrig`, `newbalanceDest` | Adds balances that only exist after the transaction goes through |
+
+`isFraud` is the label. `isFlaggedFraud` is kept only as the rule baseline and is never a model input.
+
+Run `python -m src.data` to print a summary, and `pytest` to run the tests.
+
 ## Plan
 
 **Part A — Leakage audit**
@@ -62,7 +79,7 @@ pip install -r requirements.txt
 ## Status
 
 - [x] Repo scaffold, environment, initial data check
-- [ ] Data loading and cleaning
+- [x] Data loading and cleaning
 - [ ] Part A: leakage audit
 - [ ] Part B: cost-based threshold and naira-saved results
 - [ ] Tests
