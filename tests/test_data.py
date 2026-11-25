@@ -16,6 +16,7 @@ from src.data import (
     TARGET,
     clean,
     load_clean,
+    time_split,
 )
 
 
@@ -69,6 +70,13 @@ def test_feature_sets_are_consistent(toy):
     # Label and rule flag are never model inputs.
     assert TARGET not in ALL_FEATURES
     assert RULE_FLAG not in ALL_FEATURES
+
+
+def test_time_split_has_no_overlap(toy):
+    out = clean(toy)
+    train, test = time_split(out, split_step=10)
+    assert train["step"].max() <= 10 < test["step"].min()
+    assert len(train) + len(test) == len(out)
 
 
 @pytest.mark.skipif(not RAW_PATH.exists(), reason="raw data not present")

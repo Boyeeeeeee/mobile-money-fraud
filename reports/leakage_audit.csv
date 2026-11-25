@@ -1,0 +1,4 @@
+feature_set,roc_auc,pr_auc,top_feature
+all,0.9997700265057766,0.999244847339115,oldbalanceOrg
+auth_time,0.9987137791915344,0.9958286639055806,oldbalanceOrg
+auth_no_sender_balance,0.9438890458449605,0.9020694015823428,oldbalanceDest

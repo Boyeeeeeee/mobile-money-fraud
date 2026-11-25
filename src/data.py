@@ -60,6 +60,19 @@ def load_clean(path: Path | str = RAW_PATH) -> pd.DataFrame:
     return clean(load_raw(path))
 
 
+# Train on the first 300 simulated hours, test on the rest (301..743).
+SPLIT_STEP = 300
+
+
+def time_split(
+    df: pd.DataFrame, split_step: int = SPLIT_STEP
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Split by time: rows with step <= split_step train, later rows test."""
+    train = df[df[TIME_COL] <= split_step]
+    test = df[df[TIME_COL] > split_step]
+    return train, test
+
+
 if __name__ == "__main__":
     data = load_clean()
     print("shape:", data.shape)
