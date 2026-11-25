@@ -1,0 +1,27 @@
+@"
+# environment
+.venv/
+venv/
+.env
+
+# data and outputs (data is not committed; see README for source)
+data/
+models/
+reports/figures/*.png
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# editors / OS
+.vscode/
+.ipynb_checkpoints/
+Thumbs.db
+.DS_Store
+"@ | Set-Content .gitignore
+
+Remove-Item gitignore.txt -ErrorAction SilentlyContinue
+git status
+# local Claude Code notes
+CLAUDE.md
