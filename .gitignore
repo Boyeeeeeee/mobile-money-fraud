@@ -6,7 +6,6 @@ venv/
 # data and outputs (data is not committed; see README for source)
 data/
 models/
-reports/figures/*.png
 
 # python
 __pycache__/

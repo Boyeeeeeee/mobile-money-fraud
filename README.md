@@ -65,6 +65,8 @@ The same LightGBM model (300 trees, fixed seed) was trained on three feature set
 | Auth-time | known when the transaction is requested | 0.9987 | 0.9958 |
 | Auth-time without sender balance | auth-time minus `oldbalanceOrg` | 0.9439 | 0.9021 |
 
+![PR AUC by feature set](reports/figures/leakage_audit.png)
+
 **What this shows**
 - **Leakage in time is small.** Removing the post-transaction balances (`newbalanceOrig`, `newbalanceDest`) barely changes the score (PR AUC 0.9992 → 0.9958).
 - **The near-perfect score comes from a simulator shortcut, not leakage.** In PaySim, fraud almost always empties the sender's account and normal transactions never do. The sender's starting balance (`oldbalanceOrg`) is known at authorisation time, so it is fair to use, but this clean split is unlikely in real fraud.
@@ -102,6 +104,28 @@ Results are saved to `reports/leakage_audit.csv`. Run with `python -m src.leakag
 
 Results are saved to `reports/cost_results.csv`. Run with `python -m src.cost_eval`.
 
+### With a limited review team (`src/capacity.py`)
+
+A real team can only review so many alerts an hour. For each hourly budget, the expected-loss cut-off is set on the validation period so that alerts stay within the budget. It is then applied unchanged to the test period, and it never drops below ₦500.
+
+![Fraud loss saved vs alerts per hour](reports/figures/capacity.png)
+
+| Budget (alerts/hour) | Auth-time: alerts/hour on test | Auth-time: loss saved | No sender balance: alerts/hour on test | No sender balance: loss saved |
+|---|---|---|---|---|
+| 10 | 8.0 | 97.9% | 13.8 | 88.8% |
+| 25 | 15.4 | 99.3% | 22.3 | 91.7% |
+| 50 | 21.9 | 99.6% | 30.5 | 93.7% |
+| 100 | 40.0 | 99.8% | 56.3 | 96.0% |
+| 200 | 40.0 | 99.8% | 96.6 | 97.5% |
+| No limit | 40.0 | 99.8% | 142.6 | 97.8% |
+
+**What this shows**
+- **Even a small team saves most of the loss.** At about 10 alerts an hour, the realistic model (no sender balance) still saves 89% of fraud losses. It works because the expected-loss score puts the largest likely frauds first.
+- **Returns drop off fast.** For the realistic model, going from 10 to 50 alerts an hour adds 5 points of savings, and going from 50 to the full 143 adds only 4 more.
+- **Budgets set on past data drift.** The test period has more fraud than the validation period, so the realistic model goes over its budget at small sizes (13.8 an hour against a budget of 10). In production the cut-off would need regular re-tuning.
+
+Run with `python -m src.capacity`, then `python -m src.figures` to redraw both charts.
+
 ## Plan
 
 **Part A — Leakage audit**
@@ -121,7 +145,8 @@ mobile-money-fraud/
 ├── data/raw/            # fraud_data.csv goes here (git-ignored)
 ├── src/                 # pipeline scripts
 ├── tests/               # pytest tests
-├── reports/figures/     # generated plots
+├── reports/             # result CSVs
+│   └── figures/         # README charts
 ├── requirements.txt
 └── README.md
 ```
