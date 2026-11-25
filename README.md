@@ -5,6 +5,16 @@ A fraud detection project on mobile-money transactions that asks two questions m
 1. **Is the model's score real, or is it leakage?** Some columns are only known *after* a transaction completes. A model that uses them looks near-perfect but could never run at authorisation time.
 2. **What is the model worth in money?** Accuracy means little when fraud is rare. This project picks the alert threshold by cost (missed fraud vs. analyst review) and reports results as naira saved, not percentages.
 
+## Key findings
+
+- **The near-perfect score is not leakage, but it is not realistic either.** Dropping the post-transaction balances barely moves the score (PR AUC 0.999 → 0.996). The real driver is a simulator shortcut: 98% of frauds empty the sender's account and no normal transaction does. Without the sender's balance, PR AUC falls to 0.90.
+- **The existing rule saves under 1% of fraud losses.** `isFlaggedFraud` is never wrong, but it catches 13 of 4,812 test frauds (₦71m of ₦7.5bn).
+- **The realistic model saves ₦7.34bn (98% of losses)** at the real fraud rate, after paying ₦500 to review every alert.
+- **Alert on expected loss, not on probability.** Alerting when probability × amount > ₦500 beats a tuned probability threshold and needs no tuning.
+- **A small team still saves most of the loss.** At about 10 alerts an hour, the realistic model saves 89% of losses. The next 130 alerts an hour add only 9 more points.
+
+Run everything with `python -m src.run_all`.
+
 ## Dataset
 
 A sample of [PaySim](https://www.kaggle.com/datasets/ealaxi/paysim1), a synthetic mobile-money simulation built from real transaction logs.
@@ -126,25 +136,27 @@ A real team can only review so many alerts an hour. For each hourly budget, the 
 
 Run with `python -m src.capacity`, then `python -m src.figures` to redraw both charts.
 
-## Plan
+## Limitations
 
-**Part A — Leakage audit**
-- Train the same model on two feature sets: everything, and only what is known at authorisation time.
-- Show how much of the "near-perfect" score comes from leaked columns.
-
-**Part B — Cost-based evaluation**
-- Re-weight results to the real ~0.13% fraud rate.
-- Cost of a missed fraud = the transaction amount; cost of a false alarm = a fixed review cost (e.g. ₦500).
-- Choose the threshold that minimises total cost and compare against the `isFlaggedFraud` rule.
-- Split by `step` (train on earlier hours, test on later) so the test mimics real deployment.
+- **Synthetic data.** PaySim imitates real logs, but its fraud is simpler than real fraud. The account-draining pattern is the clearest example. Real results would be lower, likely closer to the no-sender-balance model or below it.
+- **Assumed costs.** Amounts are treated as naira and a review is assumed to cost ₦500. Reviews are assumed to stop every fraud they look at. Customer friction from false alarms (blocked payments, complaints) is not counted.
+- **Re-weighting assumption.** Weighting each normal row by 63.5 assumes the sample's normal transactions were drawn at random across all hours.
+- **One time split.** Results come from one train/validation/test split with no confidence intervals. The test period also has a higher fraud share than training, because PaySim's normal volume drops after step ~400.
+- **No account history.** Account IDs almost never repeat in this sample, so features like "first transfer to this receiver" or transaction velocity could not be built. In practice these are some of the strongest fraud signals.
 
 ## Project structure
 
 ```
 mobile-money-fraud/
 ├── data/raw/            # fraud_data.csv goes here (git-ignored)
-├── src/                 # pipeline scripts
-├── tests/               # pytest tests
+├── src/
+│   ├── data.py          # load, clean, feature sets, time split
+│   ├── leakage_audit.py # Part A
+│   ├── cost_eval.py     # Part B
+│   ├── capacity.py      # limited review team scenario
+│   ├── figures.py       # README charts
+│   └── run_all.py       # runs everything above
+├── tests/               # pytest tests (16)
 ├── reports/             # result CSVs
 │   └── figures/         # README charts
 ├── requirements.txt
@@ -159,10 +171,9 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Status
+Place the data at `data/raw/fraud_data.csv`, then:
 
-- [x] Repo scaffold, environment, initial data check
-- [x] Data loading and cleaning
-- [x] Part A: leakage audit
-- [x] Part B: cost-based threshold and naira-saved results
-- [ ] Tests
+```powershell
+python -m src.run_all   # all results and figures
+pytest                  # 16 tests
+```
