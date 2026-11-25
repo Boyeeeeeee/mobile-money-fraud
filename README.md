@@ -107,7 +107,7 @@ Results are saved to `reports/leakage_audit.csv`. Run with `python -m src.leakag
 
 **What this shows**
 - **The existing rule barely helps.** It is never wrong, but it catches 13 of 4,812 frauds and saves under 1% of the losses.
-- **Any model saves far more.** Fraud amounts are large (average ₦1.47m) and a review costs only ₦500, so the best strategy is to alert widely. Even with ~5 false alarms per real fraud, the reviews pay for themselves.
+- **Any model saves far more.** Fraud amounts are large (average ₦1.47m) and a review costs only ₦500, so the best strategy is to alert widely. Even with about 15 false alarms for every fraud caught (realistic model), the reviews pay for themselves.
 - **The realistic figure is the model without the sender balance.** It saves about ₦7.34bn (98% of losses), compared with ₦7.49bn for the auth-time model. Most of the auth-time model's edge comes from the PaySim shortcut found in Part A.
 - **Expected-loss alerting beats a single threshold,** and it needs no tuning. It accepts missing some small frauds to catch the large ones.
 - **Alert volume is the real constraint.** 63,000 alerts across 443 hours is about 140 an hour. A real team may not have that capacity, which would push the threshold up.
