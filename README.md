@@ -72,6 +72,36 @@ The same LightGBM model (300 trees, fixed seed) was trained on three feature set
 
 Results are saved to `reports/leakage_audit.csv`. Run with `python -m src.leakage_audit`.
 
+## Part B results: cost in naira (`src/cost_eval.py`)
+
+**Set-up**
+- **Real fraud rate.** Each normal test transaction is weighted by 63.5, which is how many real PaySim normal TRANSFER/CASH_OUT transactions each sampled row stands for. After weighting, the test period holds about 977,000 normal transactions and 4,812 frauds.
+- **Costs.** Every alert is reviewed at ₦500. A caught fraud is stopped, and a missed fraud costs its full amount. PaySim does not name a currency, so amounts are treated as naira.
+- **No peeking at the test set.** The model trains on steps 1–240. The probability threshold is chosen on steps 241–300 and then applied unchanged to the test period (301–743).
+- **Two ways to alert.**
+  - *Threshold:* alert when the model's probability is above one fixed cut-off.
+  - *Expected loss:* convert the probability to the real fraud rate, then alert when probability × amount > ₦500. This needs no tuning and weighs large transfers more.
+
+**Test period (steps 301–743)**
+
+| Strategy | Alerts | Frauds caught (of 4,812) | Precision | Total cost (₦) | Saved vs no alerts (₦) |
+|---|---|---|---|---|---|
+| No alerts | 0 | 0 | — | 7,504,857,638 | 0 |
+| `isFlaggedFraud` rule | 13 | 13 | 100% | 7,433,912,094 | 70,945,544 |
+| Auth-time, threshold 0.172 | 22,326 | 4,733 | 21.2% | 18,009,398 | 7,486,848,241 |
+| Auth-time, expected loss | 17,726 | 4,579 | 25.8% | 17,771,986 | 7,487,085,652 |
+| No sender balance, threshold 0.099 | 62,565 | 4,071 | 6.5% | 178,187,413 | 7,326,670,225 |
+| No sender balance, expected loss | 63,150 | 3,957 | 6.3% | 165,963,412 | 7,338,894,227 |
+
+**What this shows**
+- **The existing rule barely helps.** It is never wrong, but it catches 13 of 4,812 frauds and saves under 1% of the losses.
+- **Any model saves far more.** Fraud amounts are large (average ₦1.47m) and a review costs only ₦500, so the best strategy is to alert widely. Even with ~5 false alarms per real fraud, the reviews pay for themselves.
+- **The realistic figure is the model without the sender balance.** It saves about ₦7.34bn (98% of losses), compared with ₦7.49bn for the auth-time model. Most of the auth-time model's edge comes from the PaySim shortcut found in Part A.
+- **Expected-loss alerting beats a single threshold,** and it needs no tuning. It accepts missing some small frauds to catch the large ones.
+- **Alert volume is the real constraint.** 63,000 alerts across 443 hours is about 140 an hour. A real team may not have that capacity, which would push the threshold up.
+
+Results are saved to `reports/cost_results.csv`. Run with `python -m src.cost_eval`.
+
 ## Plan
 
 **Part A — Leakage audit**
@@ -109,5 +139,5 @@ pip install -r requirements.txt
 - [x] Repo scaffold, environment, initial data check
 - [x] Data loading and cleaning
 - [x] Part A: leakage audit
-- [ ] Part B: cost-based threshold and naira-saved results
+- [x] Part B: cost-based threshold and naira-saved results
 - [ ] Tests
